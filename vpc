@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Set the region and profile for the AWS CLI
+export AWS_DEFAULT_REGION=us-west-2
+export AWS_PROFILE=default
+
+# Create the VPC
+echo "Creating VPC..."
+vpc_id=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 --query 'Vpc.VpcId' --output text)
+
+# Create the subnets
+echo "Creating subnets..."
+subnet1_id=$(aws ec2 create-subnet --vpc-id $vpc_id --cidr-block 10.0.1.0/24 --availability-zone us-west-2a --query 'Subnet.SubnetId' --output text)
+subnet2_id=$(aws ec2 create-subnet --vpc-id $vpc_id --cidr-block 10.0.2.0/24 --availability-zone us-west-2b --query 'Subnet.SubnetId' --output text)
+
+# Create the internet gateway
+echo "Creating internet gateway..."
+gateway_id=$(aws ec2 create-internet-gateway --query 'InternetGateway.InternetGatewayId' --output text)
+aws ec2 attach-internet-gateway --internet-gateway-id $gateway_id --vpc-id $vpc_id
+
+# Create the route table
+echo "Creating route table..."
+route_table_id=$(aws ec2 create-route-table --vpc-id $vpc_id --query 'RouteTable.RouteTableId' --output text)
+aws ec2 create-route --route-table-id $route_table_id --destination-cidr-block 0.0.0.0/0 --gateway-id $gateway_id
+aws ec2 associate-route-table --route-table-id $route_table_id --subnet-id $subnet1_id
+aws ec2 associate-route-table --route-table-id $route_table_id --subnet-id $subnet2_id
+
+echo "VPC created successfully"
